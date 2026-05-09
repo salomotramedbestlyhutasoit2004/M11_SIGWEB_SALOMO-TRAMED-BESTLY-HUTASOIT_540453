@@ -8,7 +8,7 @@ const wmsSource = new ol.source.TileWMS({
   params: {
     LAYERS: layerName,
     TILED: true,
-    VERSION: "1.1.1", // [KOREKSI]: Mengunci versi WMS menghindari bug axis order (Lat, Lon)
+    VERSION: "1.1.1",
   },
   serverType: "geoserver",
   crossOrigin: "anonymous",
@@ -22,12 +22,10 @@ const wmsLayer = new ol.layer.Tile({
 const wfsSource = new ol.source.Vector({
   format: new ol.format.GeoJSON(),
   url: function (extent) {
-    // [KOREKSI]: Membaca nilai dropdown filter saat request WFS dibuat
     let url = `${geoserverUrl}/wfs?service=WFS&version=1.1.0&request=GetFeature&typename=${layerName}&outputFormat=application/json&srsname=EPSG:3857&bbox=${extent.join(",")},EPSG:3857`;
 
     const filterValue = document.getElementById("cqlFilter").value;
     if (filterValue) {
-      // Encode teks spasi/karakter khusus ke format URL (contoh: spasi jadi %20)
       url += `&CQL_FILTER=${encodeURIComponent(filterValue)}`;
     }
     return url;
@@ -100,13 +98,12 @@ map.on("singleclick", function (evt) {
       fetch(url)
         .then((response) => response.json())
         .then((data) => {
-          // [KOREKSI]: Pastikan ada data yang dikembalikan (tidak mengklik laut kosong)
           if (data.features && data.features.length > 0) {
             const props = data.features[0].properties;
             content.innerHTML = `<strong>[WMS GetFeatureInfo]</strong><br>Negara Bagian: ${props.STATE_NAME}<br>Pekerja: ${props.WORKERS}`;
             overlay.setPosition(evt.coordinate);
           } else {
-            overlay.setPosition(undefined); // Tutup popup jika area kosong
+            overlay.setPosition(undefined);
           }
         })
         .catch(() => {
@@ -114,7 +111,7 @@ map.on("singleclick", function (evt) {
         });
     }
   } else if (!featureFound) {
-    overlay.setPosition(undefined); // Tutup jika klik ruang kosong dan WMS mati
+    overlay.setPosition(undefined);
   }
 });
 
@@ -130,17 +127,13 @@ document.getElementById("wfsToggle").addEventListener("change", function (e) {
 document.getElementById("cqlFilter").addEventListener("change", function (e) {
   const filterValue = e.target.value;
 
-  // [KOREKSI]: Terapkan filter ke WMS dan WFS secara bersamaan
-
   // 1. Update WMS (Gambar)
   if (filterValue) {
     wmsSource.updateParams({ CQL_FILTER: filterValue });
   } else {
-    wmsSource.updateParams({ CQL_FILTER: undefined }); // Hapus filter
+    wmsSource.updateParams({ CQL_FILTER: undefined });
   }
 
   // 2. Update WFS (Vektor)
-  wfsSource.clear(); // Hapus cache fitur WFS lama dari peta
-  // Catatan: Setelah di-clear, OpenLayers akan otomatis men-trigger fungsi 'url'
-  // pada wfsSource, yang kini akan menyisipkan parameter CQL_FILTER terbaru.
+  wfsSource.clear();
 });
